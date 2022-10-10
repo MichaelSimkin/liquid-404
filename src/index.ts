@@ -1,23 +1,24 @@
-import { GUI } from "dat.gui";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module.js";
+import { loadBackground, loadFishGlb, loadTextGeometry } from "./loader";
+import { createText, fishPathLeftFour, fishPathRightFour, fishPathZero, generateFish, moveText } from "./utils";
 
 const stats = Stats();
 document.body.appendChild(stats.dom);
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 
-const fov = 75;
-const aspect = window.innerWidth / window.innerHeight;
-const near = 0.1;
-const far = 100;
-const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-camera.position.z = 2;
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 110);
+camera.position.z = 10;
+
+const render = () => {
+    renderer.render(scene, camera);
+};
 
 const onWindowResize = () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -29,40 +30,69 @@ window.addEventListener("resize", onWindowResize, false);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 
-const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    wireframe: true,
-});
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
+const light = new THREE.AmbientLight(0xffffff);
+scene.add(light);
 
-const gui = new GUI();
-const cubeFolder = gui.addFolder("Cube");
-cubeFolder.add(cube.scale, "x", 0, 5, 0.1);
-cubeFolder.add(cube.scale, "y", 0, 5, 0.1);
-cubeFolder.add(cube.scale, "z", 0, 5, 0.1);
-cubeFolder.open();
-const cameraFolder = gui.addFolder("Camera");
-cameraFolder.add(camera.position, "z", 0, 10);
-cameraFolder.open();
+let textGeometry: THREE.BufferGeometry, textBasePositionsArray: ArrayLike<number>;
+
+type fishArr = Array<{ fish: THREE.Object3D; mixer: THREE.AnimationMixer }>;
+
+const zeroFish: fishArr = [];
+const rightFourFish: fishArr = [];
+const leftFourFish: fishArr = [];
+
+const init = async () => {
+    const background = await loadBackground();
+    scene.background = background;
+
+    textGeometry = await loadTextGeometry();
+    textBasePositionsArray = Array.from(textGeometry.attributes.position.array);
+
+    const text = createText(textGeometry, background);
+    text.lookAt(camera.position);
+    camera.lookAt(text.position);
+    scene.add(text);
+
+    const fishGlb = await loadFishGlb();
+    for (let i = 0; i < 8; i++) {
+        zeroFish.push(generateFish(fishGlb));
+        scene.add(zeroFish[i].fish);
+    }
+    for (let i = 0; i < 5; i++) {
+        rightFourFish.push(generateFish(fishGlb));
+        leftFourFish.push(generateFish(fishGlb));
+        scene.add(rightFourFish[i].fish);
+        scene.add(leftFourFish[i].fish);
+    }
+};
 
 const animate: FrameRequestCallback = (time) => {
-    const seconds = time / 1000;
-
-    cube.rotation.x = cube.rotation.y = cube.rotation.z = seconds;
-
     controls.update();
 
-    render();
-
     stats.update();
+
+    zeroFish.forEach(({ fish, mixer }, i) => {
+        mixer.setTime(time * 0.001);
+        fishPathZero(fish, 0.0005 * time + 2 * Math.PI * (i / zeroFish.length), i / zeroFish.length);
+    });
+
+    rightFourFish.forEach(({ fish, mixer }, i) => {
+        mixer.setTime(time * 0.001);
+        fishPathRightFour(fish, 0.0005 * time + 2 * Math.PI * (i / rightFourFish.length), i / rightFourFish.length);
+    });
+
+    leftFourFish.forEach(({ fish, mixer }, i) => {
+        mixer.setTime(time * 0.001);
+        fishPathLeftFour(fish, 0.0005 * time + 2 * Math.PI * (i / leftFourFish.length), i / leftFourFish.length);
+    });
+
+    moveText(textGeometry, textBasePositionsArray, time);
+
+    renderer.render(scene, camera);
 
     requestAnimationFrame(animate);
 };
 
-const render = () => {
-    renderer.render(scene, camera);
-};
-
-requestAnimationFrame(animate);
+init()
+    .then(() => requestAnimationFrame(animate))
+    .catch(console.error);

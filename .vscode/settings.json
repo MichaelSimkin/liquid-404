@@ -15,7 +15,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[html]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.html-language-features"
   },
   "[yaml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -27,5 +27,5 @@
       "other": true
     }
   },
-  "cSpell.words": ["GLTF", "Parens", "threejs", "wireframe"]
+  "cSpell.words": ["GLTF", "metalness", "Parens", "Phong", "threejs", "wireframe"]
 }
