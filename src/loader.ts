@@ -14,7 +14,7 @@ export const loadBackground = async () => {
 };
 
 export const loadTextGeometry = async () => {
-    const glb = await glbLoader.loadAsync("/textures/text/test.glb");
+    const glb = await glbLoader.loadAsync("/textures/text/base.glb");
     const textGeometry = (glb.scene.children[0] as Mesh).geometry;
     textGeometry.scale(10, 10, 10);
     textGeometry.rotateX(Math.PI / 2);
